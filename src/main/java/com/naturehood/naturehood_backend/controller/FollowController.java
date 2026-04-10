@@ -1,7 +1,10 @@
 package com.naturehood.naturehood_backend.controller;
 
 import com.naturehood.naturehood_backend.dto.response.ApiResponse;
+import com.naturehood.naturehood_backend.dto.response.FeedResponse;
+import com.naturehood.naturehood_backend.dto.response.PostDTO;
 import com.naturehood.naturehood_backend.service.FollowService;
+import com.naturehood.naturehood_backend.service.PostService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,7 @@ import java.util.Map;
  *   GET    /api/users/{userId}/following     — list following IDs
  *   GET    /api/users/{userId}/follow-counts — follower + following counts
  *   GET    /api/users/{userId}/is-following  — is the caller following this user?
+ *   GET    /api/users/{userId}/posts         — paginated posts by this user
  */
 @RestController
 @RequestMapping("/api/users")
@@ -34,9 +38,11 @@ public class FollowController {
     private static final Logger log = LoggerFactory.getLogger(FollowController.class);
 
     private final FollowService followService;
+    private final PostService postService;
 
-    public FollowController(FollowService followService) {
+    public FollowController(FollowService followService, PostService postService) {
         this.followService = followService;
+        this.postService = postService;
     }
 
     /**
@@ -139,5 +145,30 @@ public class FollowController {
         String callerId = jwt.getSubject();
         boolean following = followService.isFollowing(callerId, userId);
         return ResponseEntity.ok(ApiResponse.ok(Map.of("following", following)));
+    }
+
+    /**
+     * Paginated posts authored by a given user, newest first.
+     *
+     * The page size is clamped to 50. Pass the {@code nextCursor} from a previous
+     * response as the {@code cursor} query parameter to advance pages.
+     *
+     * @param jwt    authenticated caller's JWT (used for likedByMe on each post)
+     * @param userId the profile to view
+     * @param cursor opaque pagination cursor (omit for first page)
+     * @param limit  posts per page (default 20, max 50)
+     * @return paginated list of posts with nextCursor
+     */
+    @GetMapping("/{userId}/posts")
+    public ResponseEntity<ApiResponse<FeedResponse<PostDTO>>> getUserPosts(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String userId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        String callerId = jwt.getSubject();
+        int clampedLimit = Math.min(limit, 50);
+        FeedResponse<PostDTO> response = postService.getUserPosts(userId, callerId, cursor, clampedLimit);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

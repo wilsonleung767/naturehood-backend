@@ -9,12 +9,12 @@
 #   backend  — Spring Boot app (built from the local Dockerfile)
 
 services:
-
   # ─── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: naturehood-redis
     restart: unless-stopped
+    privileged: true
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}
