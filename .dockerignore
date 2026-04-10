@@ -1,0 +1,39 @@
+# Exclude everything that doesn't need to be inside the Docker build context.
+# Keeping the context small speeds up image builds significantly.
+
+# ── Maven build output ──
+target/
+
+# ── IDE / editor files ──
+.idea/
+*.iml
+.eclipse/
+.settings/
+.classpath
+.project
+.vscode/
+
+# ── Git ──
+.git/
+.gitignore
+.gitattributes
+
+# ── OS artefacts ──
+.DS_Store
+Thumbs.db
+
+# ── Environment / secrets (never bake these into the image) ──
+.env
+*.env
+
+# ── Docker files themselves (no need to copy into the build context) ──
+Dockerfile
+docker-compose.yml
+
+# ── Documentation ──
+*.md
+HELP.md
+
+# ── Test reports ──
+**/surefire-reports/
+**/failsafe-reports/

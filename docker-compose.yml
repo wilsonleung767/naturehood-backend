@@ -1,0 +1,90 @@
+# docker-compose.yml — Naturehood backend + Redis
+#
+# Usage:
+#   cp .env.example .env        # fill in your secrets
+#   docker compose up --build
+#
+# Services:
+#   redis    — standalone Redis 7 with AOF persistence
+#   backend  — Spring Boot app (built from the local Dockerfile)
+
+services:
+
+  # ─── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: naturehood-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Spring Boot Backend ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: naturehood-backend
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # ── Redis ──
+      # SPRING_DATA_REDIS_HOST maps to spring.data.redis.host in application.properties.
+      # "redis" is the service name above — Docker Compose DNS resolves it automatically.
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # Must match the password used in the redis service command above.
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_DATA_REDIS_SSL_ENABLED: "false"
+
+      # ── MongoDB ──
+      # application.properties reads ${MONGODB_URI} — name must match exactly.
+      MONGODB_URI: ${MONGODB_URI}
+
+      # ── Supabase JWT ──
+      # application.properties reads ${SUPABASE_JWKS_URI} and ${SUPABASE_ISSUER_URI}.
+      SUPABASE_JWKS_URI: ${SUPABASE_JWKS_URI}
+      SUPABASE_ISSUER_URI: ${SUPABASE_ISSUER_URI}
+
+      # ── Feed algorithm tuning (optional overrides) ──
+      FEED_TIMELINE_MAX_SIZE: ${FEED_TIMELINE_MAX_SIZE:-2000}
+      FEED_DEFAULT_PAGE_SIZE: ${FEED_DEFAULT_PAGE_SIZE:-20}
+      FEED_SCORE_RECENCY_WEIGHT: ${FEED_SCORE_RECENCY_WEIGHT:-0.5}
+      FEED_SCORE_ENGAGEMENT_WEIGHT: ${FEED_SCORE_ENGAGEMENT_WEIGHT:-0.3}
+      FEED_SCORE_AFFINITY_WEIGHT: ${FEED_SCORE_AFFINITY_WEIGHT:-0.2}
+      FEED_EXPLORE_MAX_INJECT_PER_POST: ${FEED_EXPLORE_MAX_INJECT_PER_POST:-50}
+      FEED_EXPLORE_LOOKBACK_HOURS: ${FEED_EXPLORE_LOOKBACK_HOURS:-48}
+      FEED_WARMUP_LOOKBACK_HOURS: ${FEED_WARMUP_LOOKBACK_HOURS:-72}
+
+      # ── SSE ──
+      SSE_EMITTER_TIMEOUT_MS: ${SSE_EMITTER_TIMEOUT_MS:-300000}
+
+      # ── Redis Pub/Sub channel ──
+      REDIS_CHANNEL_FEED: ${REDIS_CHANNEL_FEED:-channel:feed}
+
+      # ── Kafka ──
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}
+
+      # ── Logging ──
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+volumes:
+  redis_data:
+    driver: local
