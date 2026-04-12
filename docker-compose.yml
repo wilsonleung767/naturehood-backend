@@ -85,6 +85,10 @@ services:
       # ── Logging ──
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
+      # ── AI Usage Reset Cron ──
+      AI_USAGE_RESET_CRON: "${AI_USAGE_RESET_CRON:-0 0 0 * * *}"
+      AI_USAGE_RESET_TIMEZONE: ${AI_USAGE_RESET_TIMEZONE:-UTC}
+
 volumes:
   redis_data:
     driver: local

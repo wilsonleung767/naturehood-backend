@@ -27,6 +27,12 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!-- ===== Actuator (health endpoint parity with Express) ===== -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 		<!-- ===== Security + Supabase JWKS (RS256 / auto-fetch JWKS) ===== -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
