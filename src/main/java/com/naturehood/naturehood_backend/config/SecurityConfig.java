@@ -1,5 +1,6 @@
 package com.naturehood.naturehood_backend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -8,6 +9,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -44,7 +52,7 @@ public class SecurityConfig {
      *  - SSE endpoint also requires authentication (userId extracted from JWT)
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -58,7 +66,9 @@ public class SecurityConfig {
                     .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
-                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                    .jwt(jwt -> jwt
+                            .decoder(jwtDecoder)
+                            .jwtAuthenticationConverter(jwtAuthenticationConverter()))
             );
 
         return http.build();
@@ -82,6 +92,30 @@ public class SecurityConfig {
         // principal name = JWT subject ('sub') = Supabase user UUID
         converter.setPrincipalClaimName("sub");
         return converter;
+    }
+
+    /**
+     * JWT decoder strategy:
+     *  - Verify via Supabase JWKS (asymmetric keys)
+     *  - Accept both ES256 and RS256 signatures
+     */
+    @Bean
+    public JwtDecoder jwtDecoder(
+            @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri
+    ) {
+        NimbusJwtDecoder jwkDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
+                .jwsAlgorithms(algorithms -> {
+                    // Supabase can issue asymmetric JWTs with ES256 (common) or RS256.
+                    // Accept both to avoid algorithm-mismatch 401s.
+                    algorithms.add(SignatureAlgorithm.ES256);
+                    algorithms.add(SignatureAlgorithm.RS256);
+                })
+                .build();
+
+        OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
+        jwkDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator));
+        return jwkDecoder;
     }
 
     /**
