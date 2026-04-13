@@ -26,6 +26,8 @@ import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 public class MongoConfig {
 
     private static final Logger log = LoggerFactory.getLogger(MongoConfig.class);
+    private static final int INDEX_INIT_MAX_ATTEMPTS = 5;
+    private static final long INDEX_INIT_RETRY_DELAY_MS = 5000;
 
     private final MongoTemplate mongoTemplate;
     private final MongoMappingContext mongoMappingContext;
@@ -40,12 +42,44 @@ public class MongoConfig {
         log.info("Ensuring MongoDB indexes...");
         IndexResolver resolver = new MongoPersistentEntityIndexResolver(mongoMappingContext);
 
-        ensureIndexes(Post.class, resolver);
-        ensureIndexes(Comment.class, resolver);
-        ensureIndexes(Like.class, resolver);
-        ensureIndexes(Follow.class, resolver);
+        if (ensureIndexesWithRetry(resolver)) {
+            log.info("MongoDB indexes ensured.");
+            return;
+        }
 
-        log.info("MongoDB indexes ensured.");
+        log.warn("MongoDB was unreachable during startup index initialization. " +
+                "Continuing startup; indexes will be ensured on next successful restart.");
+    }
+
+    private boolean ensureIndexesWithRetry(IndexResolver resolver) {
+        for (int attempt = 1; attempt <= INDEX_INIT_MAX_ATTEMPTS; attempt++) {
+            try {
+                ensureIndexes(Post.class, resolver);
+                ensureIndexes(Comment.class, resolver);
+                ensureIndexes(Like.class, resolver);
+                ensureIndexes(Follow.class, resolver);
+                return true;
+            } catch (RuntimeException ex) {
+                if (attempt == INDEX_INIT_MAX_ATTEMPTS) {
+                    log.warn("MongoDB index initialization failed after {} attempts. Last error: {}",
+                            INDEX_INIT_MAX_ATTEMPTS, ex.getMessage());
+                    return false;
+                }
+
+                log.warn("MongoDB index initialization attempt {}/{} failed: {}. Retrying in {} ms.",
+                        attempt, INDEX_INIT_MAX_ATTEMPTS, ex.getMessage(), INDEX_INIT_RETRY_DELAY_MS);
+
+                try {
+                    Thread.sleep(INDEX_INIT_RETRY_DELAY_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    log.warn("MongoDB index initialization retry interrupted. Continuing startup.");
+                    return false;
+                }
+            }
+        }
+
+        return false;
     }
 
     private <T> void ensureIndexes(Class<T> entityClass, IndexResolver resolver) {

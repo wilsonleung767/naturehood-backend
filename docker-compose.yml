@@ -1,4 +1,28 @@
 services:
+  # ─── MongoDB (local, self-hosted) ───────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: naturehood-mongodb
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all", "--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-naturehood}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand({ ping: 1 })\" --quiet"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # ─── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
@@ -39,6 +63,8 @@ services:
     container_name: naturehood-backend
     restart: unless-stopped
     depends_on:
+      mongodb:
+        condition: service_healthy
       redis:
         condition: service_healthy
     # REMOVED ports: - "8080:8080" (Only Nginx needs to talk to this)
@@ -62,5 +88,7 @@ services:
       AI_USAGE_RESET_TIMEZONE: ${AI_USAGE_RESET_TIMEZONE:-UTC}
 
 volumes:
+  mongodb_data:
+    driver: local
   redis_data:
     driver: local
