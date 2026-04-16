@@ -30,6 +30,8 @@ public class AiUsageResetCronService implements SchedulingConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(AiUsageResetCronService.class);
     private static final String USER_AI_USAGE_PATH = "/rest/v1/user_ai_usage";
+    private static final String USER_AI_USAGE_RESET_FILTER =
+            "?or=(food_analysis_count.is.null,food_analysis_count.not.is.null)";
     private static final String RESET_PAYLOAD = "{\"food_analysis_count\":0,\"work_out_log_count\":0}";
 
     private final HttpClient httpClient;
@@ -95,7 +97,7 @@ public class AiUsageResetCronService implements SchedulingConfigurer {
                     : supabaseUrl;
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(normalizedBaseUrl + USER_AI_USAGE_PATH))
+                    .uri(URI.create(normalizedBaseUrl + USER_AI_USAGE_PATH + USER_AI_USAGE_RESET_FILTER))
                     .header("apikey", supabaseServiceRoleKey)
                     .header("Authorization", "Bearer " + supabaseServiceRoleKey)
                     .header("Content-Type", "application/json")
