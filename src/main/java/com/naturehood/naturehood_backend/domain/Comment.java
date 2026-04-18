@@ -16,7 +16,9 @@ import java.util.List;
  *
  * Depth rules:
  *  - Top-level comment: parentCommentId == null
- *  - Reply:             parentCommentId points to a top-level comment (max depth = 1)
+ *  - Reply:             parentCommentId points to any existing comment (unlimited depth)
+ *
+ * Comments are stored flat in MongoDB. The tree is assembled recursively on read.
  */
 @Document(collection = "comments")
 @CompoundIndexes({

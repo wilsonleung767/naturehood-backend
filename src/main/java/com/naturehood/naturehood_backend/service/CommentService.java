@@ -27,6 +27,10 @@ import java.util.stream.Collectors;
 
 /**
  * Comment service: create and retrieve comments with cursor-based pagination.
+ *
+ * Supports unlimited nesting depth: any comment can be replied to.
+ * Replies are stored flat in MongoDB (each comment carries parentCommentId)
+ * and the tree is assembled recursively on read.
  */
 @Service
 public class CommentService {
@@ -50,13 +54,13 @@ public class CommentService {
     }
 
     public CommentDTO addComment(String postId, String authorId, CreateCommentRequest request) {
-        Post post = postRepository.findActiveById(postId)
+        postRepository.findActiveById(postId)
                 .orElseThrow(() -> new NoSuchElementException("Post not found: " + postId));
 
         if (request.getParentCommentId() != null) {
-            Comment parent = commentRepository.findByIdAndParentCommentIdIsNull(request.getParentCommentId())
+            Comment parent = commentRepository.findById(request.getParentCommentId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "parentCommentId must point to a top-level comment: " + request.getParentCommentId()));
+                            "Parent comment not found: " + request.getParentCommentId()));
             if (!parent.getPostId().equals(postId)) {
                 throw new IllegalArgumentException("Parent comment does not belong to post: " + postId);
             }
@@ -106,28 +110,7 @@ public class CommentService {
         }
 
         List<CommentDTO> dtos = topLevel.stream()
-                .map(c -> {
-                    boolean likedByMe = likeRepository.existsByTargetIdAndUserIdAndTargetType(
-                            c.getId(), requesterId, Like.TargetType.COMMENT);
-
-                    List<Comment> replies = commentRepository.findByParentCommentId(
-                            c.getId(),
-                            Sort.by(Sort.Direction.ASC, "createdAt")
-                    );
-                    if (replies.size() > MAX_PREVIEW_REPLIES) {
-                        replies = replies.subList(0, MAX_PREVIEW_REPLIES);
-                    }
-
-                    List<CommentDTO> replyDTOs = replies.stream()
-                            .map(r -> {
-                                boolean rLiked = likeRepository.existsByTargetIdAndUserIdAndTargetType(
-                                        r.getId(), requesterId, Like.TargetType.COMMENT);
-                                return toCommentDTO(r, rLiked, null);
-                            })
-                            .collect(Collectors.toList());
-
-                    return toCommentDTO(c, likedByMe, replyDTOs);
-                })
+                .map(c -> buildCommentTree(c, requesterId))
                 .collect(Collectors.toList());
 
         String nextCursor = null;
@@ -147,6 +130,33 @@ public class CommentService {
 
     private String decodeCursor(String cursor) {
         return new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+    }
+
+    // ─── Tree building ────────────────────────────────────────────────────────
+
+    /**
+     * Recursively builds a comment tree.
+     *
+     * Each comment is expanded with a preview of its direct children (capped at
+     * MAX_PREVIEW_REPLIES). Children are themselves expanded recursively, so the
+     * full nesting is preserved in the response.
+     */
+    private CommentDTO buildCommentTree(Comment comment, String requesterId) {
+        boolean likedByMe = likeRepository.existsByTargetIdAndUserIdAndTargetType(
+                comment.getId(), requesterId, Like.TargetType.COMMENT);
+
+        List<Comment> children = commentRepository.findByParentCommentId(
+                comment.getId(), Sort.by(Sort.Direction.ASC, "createdAt"));
+
+        if (children.size() > MAX_PREVIEW_REPLIES) {
+            children = children.subList(0, MAX_PREVIEW_REPLIES);
+        }
+
+        List<CommentDTO> childDTOs = children.stream()
+                .map(c -> buildCommentTree(c, requesterId))
+                .collect(Collectors.toList());
+
+        return toCommentDTO(comment, likedByMe, childDTOs.isEmpty() ? null : childDTOs);
     }
 
     // ─── Mapping ─────────────────────────────────────────────────────────────

@@ -6,7 +6,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface CommentRepository extends MongoRepository<Comment, String> {
@@ -26,9 +25,4 @@ public interface CommentRepository extends MongoRepository<Comment, String> {
      */
     long countByPostId(String postId);
 
-    /**
-     * Cursor-based top-level comment fetch (id > cursorId for stable pagination).
-     * We use MongoTemplate for the actual cursor query; this covers simple lookups.
-     */
-    Optional<Comment> findByIdAndParentCommentIdIsNull(String id);
 }

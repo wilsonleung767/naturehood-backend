@@ -169,7 +169,7 @@ Response: `200 OK`
 
 ### `POST /api/posts/{postId}/comments`
 
-Create a top-level comment or reply.
+Create a top-level comment or reply to any existing comment (unlimited depth).
 
 Request body (`CreateCommentRequest`):
 
@@ -187,7 +187,7 @@ Validation:
 - `content` required, not blank
 - `content` max length: 300
 - `images` max items: 2
-- if `parentCommentId` is provided, it must point to a top-level comment of the same post
+- if `parentCommentId` is provided, it must be an existing comment belonging to the same post
 
 Response: `201 Created` with `ApiResponse<CommentDTO>`
 
@@ -195,7 +195,7 @@ Response: `201 Created` with `ApiResponse<CommentDTO>`
 
 ### `GET /api/posts/{postId}/comments`
 
-Get paginated top-level comments (with preview replies).
+Get paginated top-level comments with recursive reply tree (preview: up to 3 direct children per node).
 
 Query params:
 
