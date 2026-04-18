@@ -23,6 +23,7 @@ public class CommentDTO {
     private String authorId;
     private String content;
     private List<String> images;
+    private String contentType;
     private Instant createdAt;
     private int likeCount;
 
@@ -37,7 +38,7 @@ public class CommentDTO {
     public CommentDTO() {}
 
     public CommentDTO(String id, String postId, String parentCommentId, String authorId,
-                      String content, List<String> images, Instant createdAt,
+                      String content, List<String> images, String contentType, Instant createdAt,
                       int likeCount, boolean likedByMe, List<CommentDTO> replies) {
         this.id = id;
         this.postId = postId;
@@ -45,6 +46,7 @@ public class CommentDTO {
         this.authorId = authorId;
         this.content = content;
         this.images = images;
+        this.contentType = contentType;
         this.createdAt = createdAt;
         this.likeCount = likeCount;
         this.likedByMe = likedByMe;
@@ -59,6 +61,7 @@ public class CommentDTO {
     public String getAuthorId() { return authorId; }
     public String getContent() { return content; }
     public List<String> getImages() { return images; }
+    public String getContentType() { return contentType; }
     public Instant getCreatedAt() { return createdAt; }
     public int getLikeCount() { return likeCount; }
     public boolean isLikedByMe() { return likedByMe; }
@@ -72,6 +75,7 @@ public class CommentDTO {
     public void setAuthorId(String authorId) { this.authorId = authorId; }
     public void setContent(String content) { this.content = content; }
     public void setImages(List<String> images) { this.images = images; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
     public void setLikedByMe(boolean likedByMe) { this.likedByMe = likedByMe; }
@@ -88,6 +92,7 @@ public class CommentDTO {
         private String authorId;
         private String content;
         private List<String> images;
+        private String contentType;
         private Instant createdAt;
         private int likeCount;
         private boolean likedByMe;
@@ -99,13 +104,14 @@ public class CommentDTO {
         public Builder authorId(String authorId) { this.authorId = authorId; return this; }
         public Builder content(String content) { this.content = content; return this; }
         public Builder images(List<String> images) { this.images = images; return this; }
+        public Builder contentType(String contentType) { this.contentType = contentType; return this; }
         public Builder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public Builder likeCount(int likeCount) { this.likeCount = likeCount; return this; }
         public Builder likedByMe(boolean likedByMe) { this.likedByMe = likedByMe; return this; }
         public Builder replies(List<CommentDTO> replies) { this.replies = replies; return this; }
 
         public CommentDTO build() {
-            return new CommentDTO(id, postId, parentCommentId, authorId, content, images,
+            return new CommentDTO(id, postId, parentCommentId, authorId, content, images, contentType,
                     createdAt, likeCount, likedByMe, replies);
         }
     }

@@ -68,6 +68,7 @@ public class CommentService {
                 .authorId(authorId)
                 .content(request.getContent())
                 .images(request.getImages() != null ? request.getImages() : new ArrayList<>())
+                .contentType(request.getContentType())
                 .build();
 
         comment = commentRepository.save(comment);
@@ -158,6 +159,7 @@ public class CommentService {
                 .authorId(comment.getAuthorId())
                 .content(comment.getContent())
                 .images(comment.getImages())
+                .contentType(comment.getContentType())
                 .createdAt(comment.getCreatedAt())
                 .likeCount(comment.getLikeCount())
                 .likedByMe(likedByMe)

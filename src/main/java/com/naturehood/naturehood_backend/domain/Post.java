@@ -27,6 +27,8 @@ public class Post {
 
     private List<String> images = new ArrayList<>();
 
+    private String contentType;
+
     @CreatedDate
     @Indexed
     private Instant createdAt;
@@ -43,11 +45,13 @@ public class Post {
     public Post() {}
 
     public Post(String id, String authorId, String content, List<String> images,
-                Instant createdAt, int likeCount, int commentCount, int repostCount, boolean deleted) {
+                String contentType, Instant createdAt, int likeCount, int commentCount,
+                int repostCount, boolean deleted) {
         this.id = id;
         this.authorId = authorId;
         this.content = content;
         this.images = images;
+        this.contentType = contentType;
         this.createdAt = createdAt;
         this.likeCount = likeCount;
         this.commentCount = commentCount;
@@ -61,6 +65,7 @@ public class Post {
     public String getAuthorId() { return authorId; }
     public String getContent() { return content; }
     public List<String> getImages() { return images; }
+    public String getContentType() { return contentType; }
     public Instant getCreatedAt() { return createdAt; }
     public int getLikeCount() { return likeCount; }
     public int getCommentCount() { return commentCount; }
@@ -73,6 +78,7 @@ public class Post {
     public void setAuthorId(String authorId) { this.authorId = authorId; }
     public void setContent(String content) { this.content = content; }
     public void setImages(List<String> images) { this.images = images; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
     public void setCommentCount(int commentCount) { this.commentCount = commentCount; }
@@ -88,6 +94,7 @@ public class Post {
         private String authorId;
         private String content;
         private List<String> images = new ArrayList<>();
+        private String contentType;
         private Instant createdAt;
         private int likeCount = 0;
         private int commentCount = 0;
@@ -98,6 +105,7 @@ public class Post {
         public Builder authorId(String authorId) { this.authorId = authorId; return this; }
         public Builder content(String content) { this.content = content; return this; }
         public Builder images(List<String> images) { this.images = images; return this; }
+        public Builder contentType(String contentType) { this.contentType = contentType; return this; }
         public Builder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public Builder likeCount(int likeCount) { this.likeCount = likeCount; return this; }
         public Builder commentCount(int commentCount) { this.commentCount = commentCount; return this; }
@@ -105,7 +113,8 @@ public class Post {
         public Builder deleted(boolean deleted) { this.deleted = deleted; return this; }
 
         public Post build() {
-            return new Post(id, authorId, content, images, createdAt, likeCount, commentCount, repostCount, deleted);
+            return new Post(id, authorId, content, images, contentType, createdAt, likeCount, commentCount,
+                    repostCount, deleted);
         }
     }
 }

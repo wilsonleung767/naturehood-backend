@@ -17,6 +17,7 @@ public class PostDTO {
     private String authorId;
     private String content;
     private List<String> images;
+    private String contentType;
     private Instant createdAt;
     private int likeCount;
     private int commentCount;
@@ -28,11 +29,13 @@ public class PostDTO {
     public PostDTO() {}
 
     public PostDTO(String id, String authorId, String content, List<String> images,
-                   Instant createdAt, int likeCount, int commentCount, int repostCount, boolean likedByMe) {
+                   String contentType, Instant createdAt, int likeCount, int commentCount,
+                   int repostCount, boolean likedByMe) {
         this.id = id;
         this.authorId = authorId;
         this.content = content;
         this.images = images;
+        this.contentType = contentType;
         this.createdAt = createdAt;
         this.likeCount = likeCount;
         this.commentCount = commentCount;
@@ -46,6 +49,7 @@ public class PostDTO {
     public String getAuthorId() { return authorId; }
     public String getContent() { return content; }
     public List<String> getImages() { return images; }
+    public String getContentType() { return contentType; }
     public Instant getCreatedAt() { return createdAt; }
     public int getLikeCount() { return likeCount; }
     public int getCommentCount() { return commentCount; }
@@ -58,6 +62,7 @@ public class PostDTO {
     public void setAuthorId(String authorId) { this.authorId = authorId; }
     public void setContent(String content) { this.content = content; }
     public void setImages(List<String> images) { this.images = images; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
     public void setCommentCount(int commentCount) { this.commentCount = commentCount; }
@@ -73,6 +78,7 @@ public class PostDTO {
         private String authorId;
         private String content;
         private List<String> images;
+        private String contentType;
         private Instant createdAt;
         private int likeCount;
         private int commentCount;
@@ -83,6 +89,7 @@ public class PostDTO {
         public Builder authorId(String authorId) { this.authorId = authorId; return this; }
         public Builder content(String content) { this.content = content; return this; }
         public Builder images(List<String> images) { this.images = images; return this; }
+        public Builder contentType(String contentType) { this.contentType = contentType; return this; }
         public Builder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public Builder likeCount(int likeCount) { this.likeCount = likeCount; return this; }
         public Builder commentCount(int commentCount) { this.commentCount = commentCount; return this; }
@@ -90,7 +97,8 @@ public class PostDTO {
         public Builder likedByMe(boolean likedByMe) { this.likedByMe = likedByMe; return this; }
 
         public PostDTO build() {
-            return new PostDTO(id, authorId, content, images, createdAt, likeCount, commentCount, repostCount, likedByMe);
+            return new PostDTO(id, authorId, content, images, contentType, createdAt, likeCount, commentCount,
+                    repostCount, likedByMe);
         }
     }
 }

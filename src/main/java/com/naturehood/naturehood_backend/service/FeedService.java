@@ -430,6 +430,7 @@ public class FeedService {
                 .authorId(post.getAuthorId())
                 .content(post.getContent())
                 .images(post.getImages())
+                .contentType(post.getContentType())
                 .createdAt(post.getCreatedAt())
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())

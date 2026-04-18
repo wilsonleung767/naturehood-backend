@@ -25,6 +25,8 @@ public class CreateCommentRequest {
     @Size(max = 2, message = "A comment can have at most 2 images")
     private List<String> images = new ArrayList<>();
 
+    private String contentType;
+
     public CreateCommentRequest() {}
 
     // ─── Getters ──────────────────────────────────────────────────────────────
@@ -32,10 +34,12 @@ public class CreateCommentRequest {
     public String getParentCommentId() { return parentCommentId; }
     public String getContent() { return content; }
     public List<String> getImages() { return images; }
+    public String getContentType() { return contentType; }
 
     // ─── Setters ──────────────────────────────────────────────────────────────
 
     public void setParentCommentId(String parentCommentId) { this.parentCommentId = parentCommentId; }
     public void setContent(String content) { this.content = content; }
     public void setImages(List<String> images) { this.images = images; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
 }

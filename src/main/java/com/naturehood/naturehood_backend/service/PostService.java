@@ -54,6 +54,7 @@ public class PostService {
                 .authorId(authorId)
                 .content(request.getContent())
                 .images(request.getImages() != null ? request.getImages() : new ArrayList<>())
+                .contentType(request.getContentType())
                 .build();
 
         post = postRepository.save(post);
@@ -177,6 +178,7 @@ public class PostService {
                 .authorId(post.getAuthorId())
                 .content(post.getContent())
                 .images(post.getImages())
+                .contentType(post.getContentType())
                 .createdAt(post.getCreatedAt())
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())
