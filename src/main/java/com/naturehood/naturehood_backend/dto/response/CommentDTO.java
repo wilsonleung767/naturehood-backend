@@ -30,8 +30,11 @@ public class CommentDTO {
     /** True if the requesting user has liked this comment. */
     private boolean likedByMe;
 
+    /** Total number of direct replies to this comment. */
+    private int replyCount;
+
     /**
-     * Direct replies (populated only for top-level comments, null for replies).
+     * Direct replies preview (up to MAX_PREVIEW_REPLIES). May be null if there are no replies.
      */
     private List<CommentDTO> replies;
 
@@ -39,7 +42,7 @@ public class CommentDTO {
 
     public CommentDTO(String id, String postId, String parentCommentId, String authorId,
                       String content, List<String> images, String contentType, Instant createdAt,
-                      int likeCount, boolean likedByMe, List<CommentDTO> replies) {
+                      int likeCount, boolean likedByMe, int replyCount, List<CommentDTO> replies) {
         this.id = id;
         this.postId = postId;
         this.parentCommentId = parentCommentId;
@@ -50,6 +53,7 @@ public class CommentDTO {
         this.createdAt = createdAt;
         this.likeCount = likeCount;
         this.likedByMe = likedByMe;
+        this.replyCount = replyCount;
         this.replies = replies;
     }
 
@@ -65,6 +69,7 @@ public class CommentDTO {
     public Instant getCreatedAt() { return createdAt; }
     public int getLikeCount() { return likeCount; }
     public boolean isLikedByMe() { return likedByMe; }
+    public int getReplyCount() { return replyCount; }
     public List<CommentDTO> getReplies() { return replies; }
 
     // ─── Setters ──────────────────────────────────────────────────────────────
@@ -79,6 +84,7 @@ public class CommentDTO {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
     public void setLikedByMe(boolean likedByMe) { this.likedByMe = likedByMe; }
+    public void setReplyCount(int replyCount) { this.replyCount = replyCount; }
     public void setReplies(List<CommentDTO> replies) { this.replies = replies; }
 
     // ─── Builder ──────────────────────────────────────────────────────────────
@@ -96,6 +102,7 @@ public class CommentDTO {
         private Instant createdAt;
         private int likeCount;
         private boolean likedByMe;
+        private int replyCount;
         private List<CommentDTO> replies;
 
         public Builder id(String id) { this.id = id; return this; }
@@ -108,11 +115,12 @@ public class CommentDTO {
         public Builder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public Builder likeCount(int likeCount) { this.likeCount = likeCount; return this; }
         public Builder likedByMe(boolean likedByMe) { this.likedByMe = likedByMe; return this; }
+        public Builder replyCount(int replyCount) { this.replyCount = replyCount; return this; }
         public Builder replies(List<CommentDTO> replies) { this.replies = replies; return this; }
 
         public CommentDTO build() {
             return new CommentDTO(id, postId, parentCommentId, authorId, content, images, contentType,
-                    createdAt, likeCount, likedByMe, replies);
+                    createdAt, likeCount, likedByMe, replyCount, replies);
         }
     }
 }

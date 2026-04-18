@@ -101,7 +101,21 @@ public class PostController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(comment));
     }
 
+    @GetMapping("/{postId}/comments/{commentId}/replies")
+    public ResponseEntity<ApiResponse<FeedResponse<CommentDTO>>> getCommentReplies(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String postId,
+            @PathVariable String commentId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        String userId = jwt.getSubject();
+        FeedResponse<CommentDTO> response = commentService.getRepliesForComment(postId, commentId, userId, cursor, limit);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @GetMapping("/{postId}/comments")
+
     public ResponseEntity<ApiResponse<FeedResponse<CommentDTO>>> getComments(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String postId,

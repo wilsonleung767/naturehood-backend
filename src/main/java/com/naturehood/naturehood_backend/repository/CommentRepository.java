@@ -21,6 +21,11 @@ public interface CommentRepository extends MongoRepository<Comment, String> {
     List<Comment> findByParentCommentId(String parentCommentId, Sort sort);
 
     /**
+     * Replies to a specific comment scoped to a post, sorted as specified.
+     */
+    List<Comment> findByPostIdAndParentCommentId(String postId, String parentCommentId, Sort sort);
+
+    /**
      * All top-level comments AND replies for a post (used for count).
      */
     long countByPostId(String postId);

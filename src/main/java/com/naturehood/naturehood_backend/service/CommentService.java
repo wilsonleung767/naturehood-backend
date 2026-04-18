@@ -82,7 +82,50 @@ public class CommentService {
         Update postUpdate = new Update().inc("commentCount", 1);
         mongoTemplate.updateFirst(postQuery, postUpdate, Post.class);
 
-        return toCommentDTO(comment, false, null);
+        return toCommentDTO(comment, false, 0, null);
+    }
+
+    public FeedResponse<CommentDTO> getRepliesForComment(
+            String postId, String commentId, String requesterId, String cursor, int limit) {
+
+        // Verify the parent comment exists and belongs to the post
+        Comment parent = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NoSuchElementException("Comment not found: " + commentId));
+        if (!parent.getPostId().equals(postId)) {
+            throw new IllegalArgumentException("Comment does not belong to post: " + postId);
+        }
+
+        int fetchSize = limit + 1;
+        Sort ascCreated = Sort.by(Sort.Direction.ASC, "createdAt");
+
+        List<Comment> replies;
+        if (cursor == null || cursor.isBlank()) {
+            replies = commentRepository.findByPostIdAndParentCommentId(postId, commentId, ascCreated);
+        } else {
+            String decodedCursorId = decodeCursor(cursor);
+            Query q = new Query(
+                    Criteria.where("postId").is(postId)
+                            .and("parentCommentId").is(commentId)
+                            .and("_id").gt(new org.bson.types.ObjectId(decodedCursorId))
+            ).with(ascCreated).limit(fetchSize);
+            replies = mongoTemplate.find(q, Comment.class);
+        }
+
+        boolean hasNext = replies.size() > limit;
+        if (hasNext) {
+            replies = replies.subList(0, limit);
+        }
+
+        List<CommentDTO> dtos = replies.stream()
+                .map(c -> buildCommentTree(c, requesterId))
+                .collect(Collectors.toList());
+
+        String nextCursor = null;
+        if (hasNext && !replies.isEmpty()) {
+            nextCursor = encodeCursor(replies.get(replies.size() - 1).getId());
+        }
+
+        return FeedResponse.of(dtos, nextCursor);
     }
 
     public FeedResponse<CommentDTO> getComments(
@@ -148,6 +191,8 @@ public class CommentService {
         List<Comment> children = commentRepository.findByParentCommentId(
                 comment.getId(), Sort.by(Sort.Direction.ASC, "createdAt"));
 
+        int totalReplyCount = children.size();
+
         if (children.size() > MAX_PREVIEW_REPLIES) {
             children = children.subList(0, MAX_PREVIEW_REPLIES);
         }
@@ -156,12 +201,12 @@ public class CommentService {
                 .map(c -> buildCommentTree(c, requesterId))
                 .collect(Collectors.toList());
 
-        return toCommentDTO(comment, likedByMe, childDTOs.isEmpty() ? null : childDTOs);
+        return toCommentDTO(comment, likedByMe, totalReplyCount, childDTOs.isEmpty() ? null : childDTOs);
     }
 
     // ─── Mapping ─────────────────────────────────────────────────────────────
 
-    private CommentDTO toCommentDTO(Comment comment, boolean likedByMe, List<CommentDTO> replies) {
+    private CommentDTO toCommentDTO(Comment comment, boolean likedByMe, int replyCount, List<CommentDTO> replies) {
         return new CommentDTO.Builder()
                 .id(comment.getId())
                 .postId(comment.getPostId())
@@ -173,6 +218,7 @@ public class CommentService {
                 .createdAt(comment.getCreatedAt())
                 .likeCount(comment.getLikeCount())
                 .likedByMe(likedByMe)
+                .replyCount(replyCount)
                 .replies(replies)
                 .build();
     }
