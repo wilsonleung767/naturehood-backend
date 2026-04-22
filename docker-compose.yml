@@ -80,6 +80,11 @@ services:
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
 
+      # JWT Dual Decoder Configuration
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_HMAC_ENABLED: ${JWT_HMAC_ENABLED:-true}
+      JWT_DECODER_STRATEGY: ${JWT_DECODER_STRATEGY:-hmac-first}
+
       # Fix: Use an actual IP or service name if Kafka is added
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-172.17.0.1:9092}
 
