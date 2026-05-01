@@ -39,6 +39,22 @@ public class PostController {
         this.likeService = likeService;
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<FeedResponse<PostDTO>>> searchPosts(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam String q,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        String userId = jwt.getSubject();
+        if (q == null || q.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.ok(FeedResponse.of(java.util.List.of(), null)));
+        }
+        int clampedLimit = Math.min(limit, 50);
+        FeedResponse<PostDTO> results = postService.searchPosts(q.trim(), userId, cursor, clampedLimit);
+        return ResponseEntity.ok(ApiResponse.ok(results));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<PostDTO>> createPost(
             @AuthenticationPrincipal Jwt jwt,

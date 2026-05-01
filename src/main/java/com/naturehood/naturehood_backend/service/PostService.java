@@ -24,6 +24,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
+import org.springframework.data.mongodb.core.query.TextCriteria;
+import org.springframework.data.mongodb.core.query.TextQuery;
+
 /**
  * Post management service.
  */
@@ -125,6 +128,46 @@ public class PostService {
             ).with(descCreated).limit(fetchSize);
             posts = mongoTemplate.find(q, Post.class);
         }
+
+        boolean hasNext = posts.size() > limit;
+        if (hasNext) {
+            posts = posts.subList(0, limit);
+        }
+
+        List<PostDTO> dtos = posts.stream()
+                .map(p -> {
+                    boolean likedByMe = likeRepository.existsByTargetIdAndUserIdAndTargetType(
+                            p.getId(), requesterId, Like.TargetType.POST);
+                    return toPostDTO(p, likedByMe);
+                })
+                .collect(Collectors.toList());
+
+        String nextCursor = null;
+        if (hasNext && !posts.isEmpty()) {
+            nextCursor = encodeCursor(posts.get(posts.size() - 1).getId());
+        }
+
+        return FeedResponse.of(dtos, nextCursor);
+    }
+
+    public FeedResponse<PostDTO> searchPosts(
+            String queryText, String requesterId, String cursor, int limit) {
+
+        int fetchSize = limit + 1;
+
+        TextCriteria textCriteria = TextCriteria.forDefaultLanguage().matching(queryText);
+        Query query = TextQuery.queryText(textCriteria)
+                .sortByScore()
+                .addCriteria(Criteria.where("deleted").is(false));
+
+        if (cursor != null && !cursor.isBlank()) {
+            String cursorId = decodeCursor(cursor);
+            query.addCriteria(Criteria.where("_id").lt(new ObjectId(cursorId)));
+        }
+
+        query.limit(fetchSize);
+
+        List<Post> posts = mongoTemplate.find(query, Post.class);
 
         boolean hasNext = posts.size() > limit;
         if (hasNext) {
