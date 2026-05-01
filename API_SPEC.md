@@ -119,6 +119,20 @@ Response: `201 Created`
 
 ---
 
+### `GET /api/posts/search`
+
+Full-text search across posts.
+
+Query params:
+
+- `q` (required string) — search query; returns empty results if blank
+- `cursor` (optional string)
+- `limit` (optional int, default `20`, max `50`)
+
+Response: `200 OK` with `ApiResponse<FeedResponse<PostDTO>>`
+
+---
+
 ### `GET /api/posts/{postId}`
 
 Get a single post.
@@ -193,6 +207,19 @@ Response: `201 Created` with `ApiResponse<CommentDTO>`
 
 ---
 
+### `GET /api/posts/{postId}/comments/{commentId}/replies`
+
+Get paginated direct replies for a specific comment.
+
+Query params:
+
+- `cursor` (optional string)
+- `limit` (optional int, default `20`)
+
+Response: `200 OK` with `ApiResponse<FeedResponse<CommentDTO>>`
+
+---
+
 ### `GET /api/posts/{postId}/comments`
 
 Get paginated top-level comments with recursive reply tree (preview: up to 3 direct children per node).
@@ -259,6 +286,9 @@ Events:
 ### `PUT /api/users/{userId}/follow`
 
 Follow target user (idempotent).
+
+Errors:
+- `400 Bad Request` — if `{userId}` equals the caller's own ID (self-follow not allowed)
 
 Response: `200 OK`
 
