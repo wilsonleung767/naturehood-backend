@@ -90,6 +90,10 @@ services:
 
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
+      NOTIFICATIONS_SEND_URL: ${NOTIFICATIONS_SEND_URL}
+      NOTIFICATIONS_API_KEY: ${NOTIFICATIONS_API_KEY}
+      NOTIFICATIONS_ENABLED: ${NOTIFICATIONS_ENABLED:-true}
+
 volumes:
   mongodb_data:
     driver: local

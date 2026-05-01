@@ -24,10 +24,13 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final FeedService feedService;
+    private final NotificationService notificationService;
 
-    public FollowService(FollowRepository followRepository, FeedService feedService) {
+    public FollowService(FollowRepository followRepository, FeedService feedService,
+                         NotificationService notificationService) {
         this.followRepository = followRepository;
         this.feedService = feedService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -67,6 +70,8 @@ public class FollowService {
         }
 
         log.info("Follow created: follower={} -> followee={}", followerId, followeeId);
+
+        notificationService.notifyNewFollower(followeeId, followerId);
 
         // Notify feed service so it can perform any timeline side-effects
         // (currently a no-op; future hook for backfill on follow).

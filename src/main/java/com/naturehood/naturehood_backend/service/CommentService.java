@@ -42,26 +42,30 @@ public class CommentService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final MongoTemplate mongoTemplate;
+    private final NotificationService notificationService;
 
     public CommentService(CommentRepository commentRepository,
                           PostRepository postRepository,
                           LikeRepository likeRepository,
-                          MongoTemplate mongoTemplate) {
+                          MongoTemplate mongoTemplate,
+                          NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.mongoTemplate = mongoTemplate;
+        this.notificationService = notificationService;
     }
 
     public CommentDTO addComment(String postId, String authorId, CreateCommentRequest request) {
-        postRepository.findActiveById(postId)
+        Post post = postRepository.findActiveById(postId)
                 .orElseThrow(() -> new NoSuchElementException("Post not found: " + postId));
 
+        Comment parentComment = null;
         if (request.getParentCommentId() != null) {
-            Comment parent = commentRepository.findById(request.getParentCommentId())
+            parentComment = commentRepository.findById(request.getParentCommentId())
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Parent comment not found: " + request.getParentCommentId()));
-            if (!parent.getPostId().equals(postId)) {
+            if (!parentComment.getPostId().equals(postId)) {
                 throw new IllegalArgumentException("Parent comment does not belong to post: " + postId);
             }
         }
@@ -81,6 +85,16 @@ public class CommentService {
         Query postQuery = new Query(Criteria.where("id").is(postId));
         Update postUpdate = new Update().inc("commentCount", 1);
         mongoTemplate.updateFirst(postQuery, postUpdate, Post.class);
+
+        if (parentComment == null) {
+            notificationService.notifyCommentOnPost(postId, post.getAuthorId(), comment.getId(), authorId);
+        } else {
+            notificationService.notifyReplyToComment(postId, parentComment.getAuthorId(), comment.getId(), authorId);
+            // Also notify the post author if they are different from both the replier and the parent comment author
+            if (!post.getAuthorId().equals(authorId) && !post.getAuthorId().equals(parentComment.getAuthorId())) {
+                notificationService.notifyCommentOnPost(postId, post.getAuthorId(), comment.getId(), authorId);
+            }
+        }
 
         return toCommentDTO(comment, false, 0, null);
     }

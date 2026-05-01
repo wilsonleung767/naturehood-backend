@@ -29,21 +29,28 @@ public class LikeService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final MongoTemplate mongoTemplate;
+    private final NotificationService notificationService;
 
     public LikeService(LikeRepository likeRepository,
                        PostRepository postRepository,
                        CommentRepository commentRepository,
-                       MongoTemplate mongoTemplate) {
+                       MongoTemplate mongoTemplate,
+                       NotificationService notificationService) {
         this.likeRepository = likeRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.mongoTemplate = mongoTemplate;
+        this.notificationService = notificationService;
     }
 
     public boolean togglePostLike(String postId, String userId) {
-        postRepository.findActiveById(postId)
+        Post post = postRepository.findActiveById(postId)
                 .orElseThrow(() -> new NoSuchElementException("Post not found: " + postId));
-        return toggleLike(postId, userId, Like.TargetType.POST, Post.class, "posts");
+        boolean liked = toggleLike(postId, userId, Like.TargetType.POST, Post.class, "posts");
+        if (liked) {
+            notificationService.notifyPostLiked(postId, post.getAuthorId(), userId);
+        }
+        return liked;
     }
 
     public boolean toggleCommentLike(String commentId, String userId) {
