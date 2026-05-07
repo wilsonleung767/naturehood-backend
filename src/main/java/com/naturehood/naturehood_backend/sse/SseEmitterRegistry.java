@@ -63,9 +63,9 @@ public class SseEmitterRegistry {
             );
             log.debug("SSE event '{}' sent to user={}", eventName, userId);
         } catch (Exception e) {
-            log.warn("Failed to send SSE event to user={}: {}", userId, e.getMessage());
+            log.debug("SSE send failed for user={} (client likely disconnected): {}", userId, e.getMessage());
             emitters.remove(userId, emitter);
-            try { emitter.completeWithError(e); } catch (Exception ignored) {}
+            try { emitter.complete(); } catch (Exception ignored) {}
         }
     }
 

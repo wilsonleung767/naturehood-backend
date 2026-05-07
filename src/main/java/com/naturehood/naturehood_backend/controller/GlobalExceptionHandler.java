@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
+import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
@@ -63,6 +64,14 @@ public class GlobalExceptionHandler {
         log.warn("Async request timeout for path={}", request.getRequestURI());
         if (!response.isCommitted()) {
             response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+        }
+    }
+
+    @ExceptionHandler(IOException.class)
+    public void handleIOException(IOException ex, HttpServletRequest request, HttpServletResponse response) {
+        log.debug("Client disconnected: path={}, message={}", request.getRequestURI(), ex.getMessage());
+        if (!response.isCommitted()) {
+            response.setStatus(HttpStatus.NO_CONTENT.value());
         }
     }
 
