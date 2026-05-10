@@ -1,27 +1,21 @@
 {
   "properties": [
     {
-      "name": "feed.score.recency-weight",
+      "name": "feed.score.engagement-boost-hours",
       "type": "java.lang.Double",
-      "description": "Weight applied to the recency component of the feed ranking score (0–1). Weights must sum to 1.0.",
-      "defaultValue": 0.30
+      "description": "Max time-boost (in hours) a viral post gets. A post with 1000+ interactions ranks as if it were this many hours younger.",
+      "defaultValue": 4
     },
     {
-      "name": "feed.score.engagement-weight",
+      "name": "feed.score.affinity-boost-hours",
       "type": "java.lang.Double",
-      "description": "Weight applied to the engagement component of the feed ranking score (0–1). Weights must sum to 1.0.",
-      "defaultValue": 0.60
-    },
-    {
-      "name": "feed.score.affinity-weight",
-      "type": "java.lang.Double",
-      "description": "Weight applied to the affinity component of the feed ranking score (0–1). Weights must sum to 1.0.",
-      "defaultValue": 0.10
+      "description": "Time-boost (in hours) for followee posts. Followee posts rank as if they were this many hours younger than stranger/self posts.",
+      "defaultValue": 1
     },
     {
       "name": "feed.score.self-affinity",
       "type": "java.lang.Double",
-      "description": "Affinity multiplier for the author's own posts (0–1). Lower than FOLLOWEE (1.0) so own posts rank slightly below followee posts of equal age and engagement.",
+      "description": "Affinity multiplier for the author's own posts and stranger posts (0–1). Lower than FOLLOWEE (1.0) so own/stranger posts rank slightly below followee posts.",
       "defaultValue": 0.6
     }
   ]

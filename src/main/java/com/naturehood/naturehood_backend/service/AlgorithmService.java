@@ -6,25 +6,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-
 /**
  * Feed ranking algorithm service.
  *
- * Computes a relevance score for a (post, recipient) pair:
+ * Computes an epoch-based relevance score for a (post, recipient) pair:
  *
- *   score = (recency × W_recency) + (engagement × W_engagement) + (affinity × W_affinity)
+ *   score = createdAt_epochMillis + (engagement × engagementBoostMs) + (affinity × affinityBoostMs)
  *
- * Affinity tiers (highest → lowest):
- *   FOLLOWEE  1.0  — post from someone the viewer follows
- *   SELF      0.6  — viewer's own post (intentionally below followee so own posts
- *                    don't monopolise the top of the feed)
- *   STRANGER  0.0  — explore / non-follower post
+ * The post's creation timestamp is the base score, so newer posts always rank
+ * higher by default. Engagement and affinity add bounded time-boosts — a viral
+ * post effectively ranks as if it were N hours younger than it actually is.
  *
- * Default weights (recency=0.30, engagement=0.60, affinity=0.10) are tuned so
- * that a viral post (engagement ≈ 1.0) scores higher than any fresh-but-empty
- * post regardless of affinity tier.
+ * This avoids the stale-score problem where scores frozen at fan-out time
+ * become inconsistent with scores recomputed during timeline rebuilds.
  */
 @Service
 public class AlgorithmService {
@@ -32,29 +26,22 @@ public class AlgorithmService {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmService.class);
 
     private static final double MAX_ENGAGEMENT_LOG = Math.log1p(1000.0);
+    private static final long MS_PER_HOUR = 3_600_000L;
 
     public enum AffinityType { SELF, FOLLOWEE, STRANGER }
 
-    private final double recencyWeight;
-    private final double engagementWeight;
-    private final double affinityWeight;
+    private final long engagementBoostMs;
+    private final long affinityBoostMs;
     private final double selfAffinity;
 
     public AlgorithmService(
-            @Value("${feed.score.recency-weight:0.30}") double recencyWeight,
-            @Value("${feed.score.engagement-weight:0.60}") double engagementWeight,
-            @Value("${feed.score.affinity-weight:0.10}") double affinityWeight,
+            @Value("${feed.score.engagement-boost-hours:4}") double engagementBoostHours,
+            @Value("${feed.score.affinity-boost-hours:1}") double affinityBoostHours,
             @Value("${feed.score.self-affinity:0.6}") double selfAffinity
     ) {
-        this.recencyWeight = recencyWeight;
-        this.engagementWeight = engagementWeight;
-        this.affinityWeight = affinityWeight;
+        this.engagementBoostMs = (long) (engagementBoostHours * MS_PER_HOUR);
+        this.affinityBoostMs = (long) (affinityBoostHours * MS_PER_HOUR);
         this.selfAffinity = selfAffinity;
-
-        double total = recencyWeight + engagementWeight + affinityWeight;
-        if (Math.abs(total - 1.0) > 0.001) {
-            log.warn("Feed score weights do not sum to 1.0 (sum={}). Scores will be off-scale.", total);
-        }
     }
 
     /**
@@ -62,34 +49,24 @@ public class AlgorithmService {
      *
      * @param post         the post being scored
      * @param affinityType relationship between the recipient and the post's author
-     * @return score in [0, 1] range (approximately)
+     * @return epoch-millisecond-based score (higher = ranks higher in feed)
      */
     public double computeScore(Post post, AffinityType affinityType) {
-        double recency    = computeRecency(post.getCreatedAt());
+        long baseMs = post.getCreatedAt() != null ? post.getCreatedAt().toEpochMilli() : 0L;
         double engagement = computeEngagement(post.getLikeCount(), post.getCommentCount(), post.getRepostCount());
-        double affinity   = computeAffinity(affinityType);
+        double affinity = computeAffinity(affinityType);
 
-        double score = (recency * recencyWeight)
-                + (engagement * engagementWeight)
-                + (affinity * affinityWeight);
+        double score = baseMs
+                + (engagement * engagementBoostMs)
+                + (affinity * affinityBoostMs);
 
-        log.debug("Score for post={}: recency={}, engagement={}, affinity={} ({}) -> total={}",
-                post.getId(), recency, engagement, affinity, affinityType, score);
+        log.debug("Score for post={}: base={}, engagement={}, affinity={} ({}) -> total={}",
+                post.getId(), baseMs, engagement, affinity, affinityType, score);
 
         return score;
     }
 
     // ─── Component calculators ────────────────────────────────────────────────
-
-    /**
-     * Recency score in [0, 1]:
-     *   f(t) = 1 / (1 + minutesSinceCreation)
-     */
-    double computeRecency(Instant createdAt) {
-        if (createdAt == null) return 0.0;
-        long minutesAgo = Math.max(0, ChronoUnit.MINUTES.between(createdAt, Instant.now()));
-        return 1.0 / (1.0 + minutesAgo);
-    }
 
     /**
      * Engagement score in [0, 1]:
