@@ -63,7 +63,12 @@ public class PostService {
         post = postRepository.save(post);
         log.info("Post created: id={} by author={}", post.getId(), authorId);
 
-        feedService.fanOut(post, authorId);
+        try {
+            feedService.fanOut(post, authorId);
+        } catch (Exception e) {
+            log.error("Fan-out failed for post={}, it will appear after next timeline rebuild: {}",
+                    post.getId(), e.getMessage());
+        }
 
         return toPostDTO(post, false);
     }

@@ -1,0 +1,28 @@
+{
+  "properties": [
+    {
+      "name": "feed.score.recency-weight",
+      "type": "java.lang.Double",
+      "description": "Weight applied to the recency component of the feed ranking score (0–1). Weights must sum to 1.0.",
+      "defaultValue": 0.30
+    },
+    {
+      "name": "feed.score.engagement-weight",
+      "type": "java.lang.Double",
+      "description": "Weight applied to the engagement component of the feed ranking score (0–1). Weights must sum to 1.0.",
+      "defaultValue": 0.60
+    },
+    {
+      "name": "feed.score.affinity-weight",
+      "type": "java.lang.Double",
+      "description": "Weight applied to the affinity component of the feed ranking score (0–1). Weights must sum to 1.0.",
+      "defaultValue": 0.10
+    },
+    {
+      "name": "feed.score.self-affinity",
+      "type": "java.lang.Double",
+      "description": "Affinity multiplier for the author's own posts (0–1). Lower than FOLLOWEE (1.0) so own posts rank slightly below followee posts of equal age and engagement.",
+      "defaultValue": 0.6
+    }
+  ]
+}

@@ -124,21 +124,23 @@ public class FeedService {
                 .map(Follow::getFollowerId)
                 .collect(Collectors.toList());
 
-        // Author always sees their own post.
-        followerIds.add(authorId);
+        double followeeScore = algorithmService.computeScore(post, AlgorithmService.AffinityType.FOLLOWEE);
+        double selfScore     = algorithmService.computeScore(post, AlgorithmService.AffinityType.SELF);
 
-        // isFollower=true → affinity = 1.0
-        double score = algorithmService.computeScore(post, true);
-        feedRedisRepository.addToTimelines(followerIds, post.getId(), score);
+        feedRedisRepository.addToTimelines(followerIds, post.getId(), followeeScore);
+        feedRedisRepository.addToTimeline(authorId, post.getId(), selfScore);
 
-        log.info("Followee fan-out complete: post={} -> {} recipients (score={})",
-                post.getId(), followerIds.size(), score);
+        log.info("Followee fan-out complete: post={} -> {} recipients (followeeScore={}, selfScore={})",
+                post.getId(), followerIds.size() + 1, followeeScore, selfScore);
 
-        // Explore fan-out: push this post into the timelines of non-followers
-        // who don't follow the author but are in the neighbourhood.
-        exploreFanOut(post, authorId, new HashSet<>(followerIds));
+        Set<String> alreadyFannedOut = new HashSet<>(followerIds);
+        alreadyFannedOut.add(authorId);
 
-        publishSseEvent(followerIds, post);
+        exploreFanOut(post, authorId, alreadyFannedOut);
+
+        List<String> sseRecipients = new ArrayList<>(followerIds);
+        sseRecipients.add(authorId);
+        publishSseEvent(sseRecipients, post);
     }
 
     // ─── Fan-out: explore posts (strangers) ───────────────────────────────────
@@ -160,7 +162,7 @@ public class FeedService {
      */
     private void exploreFanOut(Post post, String authorId, Set<String> alreadyFannedOut) {
         // Score this post as a stranger's post (affinity = 0.0).
-        double exploreScore = algorithmService.computeScore(post, false);
+        double exploreScore = algorithmService.computeScore(post, AlgorithmService.AffinityType.STRANGER);
 
         // Only inject if the post has at least some engagement signal or is very
         // recent (< 30 min). Pure ghost posts don't get explore distribution.
@@ -333,7 +335,7 @@ public class FeedService {
         Instant since = Instant.now().minus(warmupLookbackHours, ChronoUnit.HOURS);
 
         // 1. Followee posts.
-        List<Follow> follows = followRepository.findByFolloweeId(userId);
+        List<Follow> follows = followRepository.findByFollowerId(userId);
         List<String> followeeIds = follows.stream()
                 .map(Follow::getFolloweeId)
                 .collect(Collectors.toList());
@@ -346,7 +348,10 @@ public class FeedService {
                     followeeIds, since, Sort.by(Sort.Direction.DESC, "createdAt"));
 
             for (Post post : followeePosts) {
-                double score = algorithmService.computeScore(post, true);
+                AlgorithmService.AffinityType type = post.getAuthorId().equals(userId)
+                        ? AlgorithmService.AffinityType.SELF
+                        : AlgorithmService.AffinityType.FOLLOWEE;
+                double score = algorithmService.computeScore(post, type);
                 entries.add(ZSetOperations.TypedTuple.of(post.getId(), score));
             }
             log.debug("Rebuild: {} followee posts found for user={}", followeePosts.size(), userId);
@@ -361,7 +366,7 @@ public class FeedService {
         // Cap explore posts during rebuild to avoid flooding the timeline.
         int exploreCap = (int) Math.min(explorePosts.size(), exploreMaxInjectPerPost * 2L);
         for (Post post : explorePosts.subList(0, exploreCap)) {
-            double score = algorithmService.computeScore(post, false);
+            double score = algorithmService.computeScore(post, AlgorithmService.AffinityType.STRANGER);
             entries.add(ZSetOperations.TypedTuple.of(post.getId(), score));
         }
         log.debug("Rebuild: {} explore posts injected for user={}", exploreCap, userId);
@@ -385,7 +390,25 @@ public class FeedService {
      * @param followeeId the user who was just followed
      */
     public void onFollow(String followerId, String followeeId) {
-        log.debug("onFollow hook: follower={} followee={} (no timeline backfill)", followerId, followeeId);
+        Instant since = Instant.now().minus(warmupLookbackHours, ChronoUnit.HOURS);
+
+        List<Post> recentPosts = postRepository.findRecentByAuthorIdsAndCreatedAtAfter(
+                List.of(followeeId),
+                since,
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        if (recentPosts.isEmpty()) {
+            log.debug("onFollow: no recent posts from followee={} to backfill for follower={}", followeeId, followerId);
+            return;
+        }
+
+        for (Post post : recentPosts) {
+            double score = algorithmService.computeScore(post, AlgorithmService.AffinityType.FOLLOWEE);
+            feedRedisRepository.addToTimeline(followerId, post.getId(), score);
+        }
+
+        log.info("onFollow: backfilled {} posts from followee={} into follower={} timeline",
+                recentPosts.size(), followeeId, followerId);
     }
 
     /**
