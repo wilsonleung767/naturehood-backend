@@ -3,6 +3,7 @@ package com.naturehood.naturehood_backend.sse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -67,6 +68,20 @@ public class SseEmitterRegistry {
             emitters.remove(userId, emitter);
             try { emitter.complete(); } catch (Exception ignored) {}
         }
+    }
+
+    @Scheduled(fixedRate = 30_000)
+    public void sendHeartbeats() {
+        if (emitters.isEmpty()) return;
+        emitters.forEach((userId, emitter) -> {
+            try {
+                emitter.send(SseEmitter.event().comment("heartbeat"));
+            } catch (Exception e) {
+                log.debug("Heartbeat failed for user={}, removing emitter", userId);
+                emitters.remove(userId, emitter);
+                try { emitter.complete(); } catch (Exception ignored) {}
+            }
+        });
     }
 
     public int activeConnectionCount() {
